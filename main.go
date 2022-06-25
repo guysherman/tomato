@@ -6,28 +6,40 @@ import (
 	"time"
 
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/guysherman/tomato/breakMode"
 	"github.com/guysherman/tomato/focusMode"
 )
 
-type model struct {
+type Tomato struct {
 	currentView View
 }
 
-func (m model) Init() tea.Cmd {
+func (m Tomato) Init() tea.Cmd {
 	return nil
 }
 
-func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
-
-	return m.currentView.Update(msg)
+func (m Tomato) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+	switch msg := msg.(type) {
+	case focusMode.FocusCompleteMsg:
+		return handleFocusComplete(m, msg)
+	default:
+		var cmd tea.Cmd
+		m.currentView, cmd = m.currentView.Update(msg)
+		return m, cmd
+	}
 }
 
-func (m model) View() string {
+func handleFocusComplete(m Tomato, msg focusMode.FocusCompleteMsg) (tea.Model, tea.Cmd) {
+	m.currentView = breakMode.NewBreakMode("5m", time.Second)
+	return m, nil
+}
+
+func (m Tomato) View() string {
 	return m.currentView.View()
 }
 
 func main() {
-	m := model{
+	m := Tomato{
 		currentView: focusMode.NewFocusMode("25m", time.Second, 120, 40),
 	}
 

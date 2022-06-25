@@ -141,26 +141,15 @@ func (m FocusMode) getStartPauseButtonText() string {
 func (m FocusMode) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
-		switch keypress := msg.String(); keypress {
-		case tea.KeySpace.String():
-			return handleSpacebar(m)
-		case tea.KeyEnter.String():
-			return handleEnterPressed(m)
-		case "s":
-			return handleSPressed(m)
-		case "h", tea.KeyLeft.String():
-			return handleHPressed(m)
-		case "l", tea.KeyRight.String():
-			return handleLPressed(m)
-		case "q":
-			return m, tea.Quit
-		}
+		return handleKeyMessage(m, msg)
 	case timer.TickMsg:
 		return handleTickMessage(m, msg)
 	case timer.StartStopMsg:
 		return handleStartStopMessage(m, msg)
 	case tea.WindowSizeMsg:
 		return handleResizeMessage(m, msg)
+	case timer.TimeoutMsg:
+		return handleTimeoutMessage(m, msg)
 	}
 	return m, nil
 }
@@ -171,6 +160,24 @@ func (m FocusMode) Init() tea.Cmd {
 
 func (m FocusMode) PercentComplete() float64 {
 	return m.percentComplete
+}
+func handleKeyMessage(m FocusMode, msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+	switch keypress := msg.String(); keypress {
+	case tea.KeySpace.String():
+		return handleSpacebar(m)
+	case tea.KeyEnter.String():
+		return handleEnterPressed(m)
+	case "s":
+		return handleSPressed(m)
+	case "h", tea.KeyLeft.String():
+		return handleHPressed(m)
+	case "l", tea.KeyRight.String():
+		return handleLPressed(m)
+	case "q":
+		return m, tea.Quit
+	}
+
+	return m, nil
 }
 
 func handleTickMessage(m FocusMode, msg timer.TickMsg) (tea.Model, tea.Cmd) {
@@ -186,6 +193,14 @@ func handleSpacebar(m FocusMode) (tea.Model, tea.Cmd) {
 	return startPauseTimer(m)
 }
 
+func handleEnterPressed(m FocusMode) (tea.Model, tea.Cmd) {
+	if m.activeButton == startPauseButton {
+		return startPauseTimer(m)
+	} else {
+		return stopTimer(m)
+	}
+}
+
 func startPauseTimer(m FocusMode) (tea.Model, tea.Cmd) {
 	if !m.started {
 		m.started = true
@@ -195,14 +210,6 @@ func startPauseTimer(m FocusMode) (tea.Model, tea.Cmd) {
 		return m, m.timer.Init()
 	} else {
 		return m, m.timer.Toggle()
-	}
-}
-
-func handleEnterPressed(m FocusMode) (tea.Model, tea.Cmd) {
-	if m.activeButton == startPauseButton {
-		return startPauseTimer(m)
-	} else {
-		return stopTimer(m)
 	}
 }
 
@@ -240,4 +247,12 @@ func handleResizeMessage(m FocusMode, msg tea.WindowSizeMsg) (tea.Model, tea.Cmd
 	m.progressBar.Width = int(float64(msg.Width) * 0.64)
 
 	return m, nil
+}
+
+func handleTimeoutMessage(m FocusMode, msg timer.TimeoutMsg) (tea.Model, tea.Cmd) {
+	return m, focusComplete
+}
+
+func focusComplete() tea.Msg {
+	return FocusCompleteMsg{}
 }
