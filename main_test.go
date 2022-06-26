@@ -12,7 +12,9 @@ func TestMain(t *testing.T) {
 	Convey("Main", t, func() {
 		Convey("FocusCompleteMsg transitions to BreakMode", func() {
 			var t tea.Model
-			t = Tomato{}
+			t = Tomato{
+				longBreakTomatos: 4,
+			}
 			msg := timerview.TimerCompleteMsg{}
 			t, cmd := t.Update(msg)
 
