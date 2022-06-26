@@ -1,4 +1,4 @@
-package focusMode
+package timerview
 
 import (
 	"fmt"
@@ -10,8 +10,8 @@ import (
 	. "github.com/smartystreets/goconvey/convey"
 )
 
-func TestFoucusMode(t *testing.T) {
-	Convey("FocusMode", t, func() {
+func TestTimerView(t *testing.T) {
+	Convey("TimerView", t, func() {
 		Convey("timer is not running", func() {
 			fm := NewFocusMode("1s", time.Millisecond, 120, 40)
 			Convey("Pressing spacebar starts the timer", func() {
@@ -25,10 +25,10 @@ func TestFoucusMode(t *testing.T) {
 				So(fmt.Sprintf("%T", msg2), ShouldResemble, fmt.Sprintf("%T", timer.TickMsg{}))
 
 				fm, cmd = fm.Update(msg2)
-				So(fm.(FocusMode).timer.Running(), ShouldBeTrue)
-				So(fm.(FocusMode).keymaps[0].Enabled(), ShouldBeFalse)
-				So(fm.(FocusMode).keymaps[1].Enabled(), ShouldBeTrue)
-				So(fm.(FocusMode).keymaps[2].Enabled(), ShouldBeTrue)
+				So(fm.(TimerView).timer.Running(), ShouldBeTrue)
+				So(fm.(TimerView).keymaps[0].Enabled(), ShouldBeFalse)
+				So(fm.(TimerView).keymaps[1].Enabled(), ShouldBeTrue)
+				So(fm.(TimerView).keymaps[2].Enabled(), ShouldBeTrue)
 			})
 
 			Convey("Pressing q exits the application", func() {
@@ -44,13 +44,13 @@ func TestFoucusMode(t *testing.T) {
 			})
 
 			Reset(func() {
-				fm = NewFocusMode("1s", time.Millisecond, 120, 40)
+				fm = NewTimerView("1s", time.Millisecond, TimerViewStyle{})
 			})
 		})
 
 		Convey("Buttons", func() {
 			var fm tea.Model
-			fm = NewFocusMode("1s", time.Millisecond, 120, 40)
+			fm = NewTimerView("1s", time.Millisecond, TimerViewStyle{})
 			Convey("l switches active button to stop", func() {
 				msg := tea.KeyMsg{
 					Type:  tea.KeyRunes,
@@ -59,7 +59,7 @@ func TestFoucusMode(t *testing.T) {
 				}
 
 				fm, _ := fm.Update(msg)
-				So(fm.(FocusMode).activeButton, ShouldEqual, stopButton)
+				So(fm.(TimerView).activeButton, ShouldEqual, stopButton)
 			})
 
 			Convey("right switches active button to stop", func() {
@@ -69,11 +69,11 @@ func TestFoucusMode(t *testing.T) {
 				}
 
 				fm, _ := fm.Update(msg)
-				So(fm.(FocusMode).activeButton, ShouldEqual, stopButton)
+				So(fm.(TimerView).activeButton, ShouldEqual, stopButton)
 			})
 
 			Convey("h switches active button to start", func() {
-				fmm := fm.(FocusMode)
+				fmm := fm.(TimerView)
 				fmm.activeButton = stopButton
 				fm = fmm
 				msg := tea.KeyMsg{
@@ -83,11 +83,11 @@ func TestFoucusMode(t *testing.T) {
 				}
 
 				fm, _ := fm.Update(msg)
-				So(fm.(FocusMode).activeButton, ShouldEqual, startPauseButton)
+				So(fm.(TimerView).activeButton, ShouldEqual, startPauseButton)
 			})
 
 			Convey("left switches active button to start", func() {
-				fmm := fm.(FocusMode)
+				fmm := fm.(TimerView)
 				fmm.activeButton = stopButton
 				fm = fmm
 				msg := tea.KeyMsg{
@@ -96,7 +96,7 @@ func TestFoucusMode(t *testing.T) {
 				}
 
 				fm, _ := fm.Update(msg)
-				So(fm.(FocusMode).activeButton, ShouldEqual, startPauseButton)
+				So(fm.(TimerView).activeButton, ShouldEqual, startPauseButton)
 			})
 
 			Convey("When Start is active, Enter starts timer", func() {
@@ -110,15 +110,15 @@ func TestFoucusMode(t *testing.T) {
 				So(fmt.Sprintf("%T", msg2), ShouldResemble, fmt.Sprintf("%T", timer.TickMsg{}))
 
 				fm, cmd = fm.Update(msg2)
-				So(fm.(FocusMode).started, ShouldBeTrue)
-				So(fm.(FocusMode).timer.Running(), ShouldBeTrue)
+				So(fm.(TimerView).started, ShouldBeTrue)
+				So(fm.(TimerView).timer.Running(), ShouldBeTrue)
 			})
 
 			Convey("When Pause is active, Enter pauses timer", func() {
-				fmm := fm.(FocusMode)
+				fmm := fm.(TimerView)
 				fmm.started = true
 				fm = fmm
-				cmd := fm.(FocusMode).timer.Init()
+				cmd := fm.(TimerView).timer.Init()
 				tickMsg := cmd()
 				fm, cmd = fm.Update(tickMsg)
 
@@ -132,15 +132,15 @@ func TestFoucusMode(t *testing.T) {
 				So(fmt.Sprintf("%T", msg2), ShouldResemble, fmt.Sprintf("%T", timer.StartStopMsg{}))
 
 				fm, cmd = fm.Update(msg2)
-				So(fm.(FocusMode).timer.Running(), ShouldBeFalse)
+				So(fm.(TimerView).timer.Running(), ShouldBeFalse)
 			})
 
 			Convey("When Stop is active, Enter stops and resets the timer", func() {
-				fmm := fm.(FocusMode)
+				fmm := fm.(TimerView)
 				fmm.started = true
 				fmm.activeButton = stopButton
 				fm = fmm
-				cmd := fm.(FocusMode).timer.Init()
+				cmd := fm.(TimerView).timer.Init()
 				tickMsg := cmd()
 				fm, cmd = fm.Update(tickMsg)
 
@@ -151,8 +151,8 @@ func TestFoucusMode(t *testing.T) {
 
 				fm, cmd := fm.Update(msg)
 				So(cmd, ShouldBeNil)
-				So(fm.(FocusMode).started, ShouldBeFalse)
-				So(fm.(FocusMode).activeButton, ShouldEqual, startPauseButton)
+				So(fm.(TimerView).started, ShouldBeFalse)
+				So(fm.(TimerView).activeButton, ShouldEqual, startPauseButton)
 			})
 
 			Reset(func() {
@@ -162,10 +162,10 @@ func TestFoucusMode(t *testing.T) {
 
 		Convey("the timer is running", func() {
 			var fm tea.Model = NewFocusMode("1s", time.Millisecond, 120, 40)
-			fmm := fm.(FocusMode)
+			fmm := fm.(TimerView)
 			fmm.started = true
 			fm = fmm
-			cmd := fm.(FocusMode).timer.Init()
+			cmd := fm.(TimerView).timer.Init()
 			tickMsg := cmd()
 			fm, cmd = fm.Update(tickMsg)
 
@@ -180,10 +180,10 @@ func TestFoucusMode(t *testing.T) {
 				So(fmt.Sprintf("%T", msg2), ShouldResemble, fmt.Sprintf("%T", timer.StartStopMsg{}))
 
 				fm, cmd = fm.Update(msg2)
-				So(fm.(FocusMode).timer.Running(), ShouldBeFalse)
-				So(fm.(FocusMode).keymaps[0].Enabled(), ShouldBeTrue)
-				So(fm.(FocusMode).keymaps[1].Enabled(), ShouldBeFalse)
-				So(fm.(FocusMode).keymaps[2].Enabled(), ShouldBeTrue)
+				So(fm.(TimerView).timer.Running(), ShouldBeFalse)
+				So(fm.(TimerView).keymaps[0].Enabled(), ShouldBeTrue)
+				So(fm.(TimerView).keymaps[1].Enabled(), ShouldBeFalse)
+				So(fm.(TimerView).keymaps[2].Enabled(), ShouldBeTrue)
 			})
 
 			Convey("Pressing s stops, and resets, the timer", func() {
@@ -195,10 +195,10 @@ func TestFoucusMode(t *testing.T) {
 
 				fm, cmd := fm.Update(msg)
 				So(cmd, ShouldBeNil)
-				So(fm.(FocusMode).started, ShouldBeFalse)
-				So(fm.(FocusMode).keymaps[0].Enabled(), ShouldBeTrue)
-				So(fm.(FocusMode).keymaps[1].Enabled(), ShouldBeFalse)
-				So(fm.(FocusMode).keymaps[2].Enabled(), ShouldBeFalse)
+				So(fm.(TimerView).started, ShouldBeFalse)
+				So(fm.(TimerView).keymaps[0].Enabled(), ShouldBeTrue)
+				So(fm.(TimerView).keymaps[1].Enabled(), ShouldBeFalse)
+				So(fm.(TimerView).keymaps[2].Enabled(), ShouldBeFalse)
 			})
 
 			Convey("Pressing q exits the application", func() {
@@ -220,16 +220,16 @@ func TestFoucusMode(t *testing.T) {
 				}
 
 				fm, _ := fm.Update(msg)
-				So(fm.(FocusMode).PercentComplete(), ShouldAlmostEqual, 0.001)
-				So(fm.(FocusMode).progressBar.Percent(), ShouldAlmostEqual, 0.001)
+				So(fm.(TimerView).PercentComplete(), ShouldAlmostEqual, 0.001)
+				So(fm.(TimerView).progressBar.Percent(), ShouldAlmostEqual, 0.001)
 			})
 
 			Reset(func() {
 				fm = NewFocusMode("1s", time.Millisecond, 120, 40)
-				fmm = fm.(FocusMode)
+				fmm = fm.(TimerView)
 				fmm.started = true
 				fm = fmm
-				cmd = fm.(FocusMode).timer.Init()
+				cmd = fm.(TimerView).timer.Init()
 				tickMsg = cmd()
 				fm, cmd = fm.Update(tickMsg)
 			})

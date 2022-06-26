@@ -1,4 +1,4 @@
-package focusMode
+package timerview
 
 import (
 	"fmt"
@@ -12,21 +12,6 @@ import (
 	"github.com/charmbracelet/lipgloss"
 )
 
-var inactiveButtonStyle = lipgloss.NewStyle().
-	Foreground(lipgloss.Color("8")).
-	Background(lipgloss.Color("7")).
-	Padding(0, 3).
-	Margin(1)
-
-var activeButtonStyle = inactiveButtonStyle.Copy().
-	Foreground(lipgloss.Color("255")).
-	Background(lipgloss.Color("1")).
-	Margin(1).
-	Underline(true)
-var border = lipgloss.NewStyle().Border(lipgloss.RoundedBorder()).BorderForeground(lipgloss.Color("1")).Padding(2, 2, 0)
-
-var duration = time.Second * 25
-
 type activeButton int64
 
 const (
@@ -34,9 +19,24 @@ const (
 	stopButton
 )
 
-type FocusMode struct {
-	width            int
-	height           int
+type StopBehavior func(TimerView) (tea.Model, tea.Cmd)
+
+type TimerViewStyle struct {
+	activeButtonStyle   lipgloss.Style
+	inactiveButtonStyle lipgloss.Style
+	borderStyle         lipgloss.Style
+	progressBarColor    string
+	startText           string
+	pauseText           string
+	resumeText          string
+	stopText            string
+	stopHelpText        string
+	width               int
+	height              int
+	onStop              StopBehavior
+}
+
+type TimerView struct {
 	timer            timer.Model
 	started          bool
 	originalDuration time.Duration
@@ -46,20 +46,21 @@ type FocusMode struct {
 	keymaps          []key.Binding
 	help             help.Model
 	activeButton     activeButton
+	style            TimerViewStyle
 }
 
-func NewFocusMode(duration string, interval time.Duration, width int, height int) FocusMode {
+func NewTimerView(duration string, interval time.Duration, style TimerViewStyle) TimerView {
 	focusDuration, err := time.ParseDuration(duration)
 	if err != nil {
 		focusDuration = time.Minute * 25
 	}
 
-	return FocusMode{
+	return TimerView{
 		timer: timer.NewWithInterval(focusDuration, interval),
 		progressBar: progress.New(
-			progress.WithGradient("#FF0000", "#00FF00"),
+			progress.WithSolidFill(style.progressBarColor),
 			progress.WithoutPercentage(),
-			progress.WithWidth(int(float64(width)*0.64)),
+			progress.WithWidth(int(float64(style.width)*0.64)),
 		),
 		originalDuration: focusDuration,
 		originalInterval: interval,
@@ -77,7 +78,7 @@ func NewFocusMode(duration string, interval time.Duration, width int, height int
 			),
 			key.NewBinding(
 				key.WithKeys("s"),
-				key.WithHelp("s", "Stops, and resets the timer"),
+				key.WithHelp("s", style.stopHelpText),
 				key.WithDisabled(),
 			),
 			key.NewBinding(
@@ -86,36 +87,35 @@ func NewFocusMode(duration string, interval time.Duration, width int, height int
 			),
 		},
 		help:         help.NewModel(),
-		width:        width,
-		height:       height,
 		activeButton: startPauseButton,
+		style:        style,
 	}
 }
 
-func (m FocusMode) getStartPauseButton() string {
+func (m TimerView) getStartPauseButton() string {
 	var buttonStyle lipgloss.Style
 	if m.activeButton == startPauseButton {
-		buttonStyle = activeButtonStyle
+		buttonStyle = m.style.activeButtonStyle
 	} else {
-		buttonStyle = inactiveButtonStyle
+		buttonStyle = m.style.inactiveButtonStyle
 	}
 	startPauseButtonText := m.getStartPauseButtonText()
 	startPauseButton := buttonStyle.Render(startPauseButtonText)
 	return startPauseButton
 }
 
-func (m FocusMode) getStopButton() string {
+func (m TimerView) getStopButton() string {
 	var buttonStyle lipgloss.Style
 	if m.activeButton == stopButton {
-		buttonStyle = activeButtonStyle
+		buttonStyle = m.style.activeButtonStyle
 	} else {
-		buttonStyle = inactiveButtonStyle
+		buttonStyle = m.style.inactiveButtonStyle
 	}
-	cancelButton := buttonStyle.Render("Stop")
+	cancelButton := buttonStyle.Render(m.style.stopText)
 	return cancelButton
 }
 
-func (m FocusMode) View() string {
+func (m TimerView) View() string {
 	startPauseButton := m.getStartPauseButton()
 	cancelButton := m.getStopButton()
 	buttons := lipgloss.JoinHorizontal(lipgloss.Top, startPauseButton, cancelButton)
@@ -124,21 +124,21 @@ func (m FocusMode) View() string {
 	timeLeft := fmt.Sprintf("\n%s\n", m.timer.View())
 	help := fmt.Sprintf("\n\n%s", m.help.ShortHelpView(m.keymaps))
 	ui := lipgloss.JoinVertical(lipgloss.Center, pbar, timeLeft, buttons, help)
-	block := lipgloss.Place(m.width, m.height, lipgloss.Center, lipgloss.Center, border.Render(ui))
+	block := lipgloss.Place(m.style.width, m.style.height, lipgloss.Center, lipgloss.Center, m.style.borderStyle.Render(ui))
 	return block
 }
 
-func (m FocusMode) getStartPauseButtonText() string {
+func (m TimerView) getStartPauseButtonText() string {
 	if !m.started {
-		return "Start"
+		return m.style.startText
 	} else if !m.timer.Running() {
-		return "Resume"
+		return m.style.resumeText
 	} else {
-		return "Pause"
+		return m.style.pauseText
 	}
 }
 
-func (m FocusMode) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+func (m TimerView) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
 		return handleKeyMessage(m, msg)
@@ -154,14 +154,14 @@ func (m FocusMode) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return m, nil
 }
 
-func (m FocusMode) Init() tea.Cmd {
+func (m TimerView) Init() tea.Cmd {
 	return m.timer.Init()
 }
 
-func (m FocusMode) PercentComplete() float64 {
+func (m TimerView) PercentComplete() float64 {
 	return m.percentComplete
 }
-func handleKeyMessage(m FocusMode, msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+func handleKeyMessage(m TimerView, msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	switch keypress := msg.String(); keypress {
 	case tea.KeySpace.String():
 		return handleSpacebar(m)
@@ -180,7 +180,7 @@ func handleKeyMessage(m FocusMode, msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	return m, nil
 }
 
-func handleTickMessage(m FocusMode, msg timer.TickMsg) (tea.Model, tea.Cmd) {
+func handleTickMessage(m TimerView, msg timer.TickMsg) (tea.Model, tea.Cmd) {
 	var cmd tea.Cmd
 	timeUsed := m.originalDuration.Hours() - m.timer.Timeout.Hours()
 	m.percentComplete = timeUsed / m.originalDuration.Hours()
@@ -189,11 +189,11 @@ func handleTickMessage(m FocusMode, msg timer.TickMsg) (tea.Model, tea.Cmd) {
 	return m, cmd
 }
 
-func handleSpacebar(m FocusMode) (tea.Model, tea.Cmd) {
+func handleSpacebar(m TimerView) (tea.Model, tea.Cmd) {
 	return startPauseTimer(m)
 }
 
-func handleEnterPressed(m FocusMode) (tea.Model, tea.Cmd) {
+func handleEnterPressed(m TimerView) (tea.Model, tea.Cmd) {
 	if m.activeButton == startPauseButton {
 		return startPauseTimer(m)
 	} else {
@@ -201,7 +201,7 @@ func handleEnterPressed(m FocusMode) (tea.Model, tea.Cmd) {
 	}
 }
 
-func startPauseTimer(m FocusMode) (tea.Model, tea.Cmd) {
+func startPauseTimer(m TimerView) (tea.Model, tea.Cmd) {
 	if !m.started {
 		m.started = true
 		m.keymaps[0].SetEnabled(false)
@@ -213,26 +213,26 @@ func startPauseTimer(m FocusMode) (tea.Model, tea.Cmd) {
 	}
 }
 
-func stopTimer(m FocusMode) (tea.Model, tea.Cmd) {
-	newModel := NewFocusMode(m.originalDuration.String(), m.originalInterval, m.width, m.height)
+func stopTimer(m TimerView) (tea.Model, tea.Cmd) {
+	newModel := NewTimerView(m.originalDuration.String(), m.originalInterval, m.style)
 	return newModel, nil
 }
 
-func handleSPressed(m FocusMode) (tea.Model, tea.Cmd) {
-	return stopTimer(m)
+func handleSPressed(m TimerView) (tea.Model, tea.Cmd) {
+	return m.style.onStop(m)
 }
 
-func handleHPressed(m FocusMode) (tea.Model, tea.Cmd) {
+func handleHPressed(m TimerView) (tea.Model, tea.Cmd) {
 	m.activeButton = startPauseButton
 	return m, nil
 }
 
-func handleLPressed(m FocusMode) (tea.Model, tea.Cmd) {
+func handleLPressed(m TimerView) (tea.Model, tea.Cmd) {
 	m.activeButton = stopButton
 	return m, nil
 }
 
-func handleStartStopMessage(m FocusMode, msg timer.StartStopMsg) (tea.Model, tea.Cmd) {
+func handleStartStopMessage(m TimerView, msg timer.StartStopMsg) (tea.Model, tea.Cmd) {
 	var cmd tea.Cmd
 	m.timer, cmd = m.timer.Update(msg)
 	m.keymaps[0].SetEnabled(!m.timer.Running())
@@ -241,18 +241,18 @@ func handleStartStopMessage(m FocusMode, msg timer.StartStopMsg) (tea.Model, tea
 	return m, cmd
 }
 
-func handleResizeMessage(m FocusMode, msg tea.WindowSizeMsg) (tea.Model, tea.Cmd) {
-	m.width = msg.Width
-	m.height = msg.Height
+func handleResizeMessage(m TimerView, msg tea.WindowSizeMsg) (tea.Model, tea.Cmd) {
+	m.style.width = msg.Width
+	m.style.height = msg.Height
 	m.progressBar.Width = int(float64(msg.Width) * 0.64)
 
 	return m, nil
 }
 
-func handleTimeoutMessage(m FocusMode, msg timer.TimeoutMsg) (tea.Model, tea.Cmd) {
+func handleTimeoutMessage(m TimerView, msg timer.TimeoutMsg) (tea.Model, tea.Cmd) {
 	return m, focusComplete
 }
 
 func focusComplete() tea.Msg {
-	return FocusCompleteMsg{}
+	return TimerCompleteMsg{}
 }
