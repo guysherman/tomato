@@ -9,6 +9,11 @@ go get
 go build .
 ```
 
+## Features
+
+* Configurable Focus, Break and Long Break periods
+* Desktop Notifications (if you use [Kitty](https://github.com/kovidgoyal/kitty) as your terminal)
+
 ## Usage
 
 `tomato [-f duration] [-s duration] [-l duration] [-L count]`
