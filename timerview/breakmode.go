@@ -1,10 +1,12 @@
 package timerview
 
 import (
+	"fmt"
 	"time"
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
+	"github.com/guysherman/tomato/notifications"
 )
 
 func NewBreakMode(duration string, interval time.Duration, width int, height int) TimerView {
@@ -39,6 +41,14 @@ func NewBreakMode(duration string, interval time.Duration, width int, height int
 		height:              height,
 		onStop: func(m TimerView) (tea.Model, tea.Cmd) {
 			return m, focusComplete
+		},
+		onTimeout: func() {
+			n := notifications.NewNotification(
+				"Break Complete!",
+				"Hey you! Time to knuckle down.",
+				notifications.Focus,
+				func(s string) { fmt.Print(s) })
+			n.Send()
 		},
 	}
 

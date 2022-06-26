@@ -20,6 +20,7 @@ const (
 )
 
 type StopBehavior func(TimerView) (tea.Model, tea.Cmd)
+type TimeoutBehavior func()
 
 type TimerViewStyle struct {
 	activeButtonStyle   lipgloss.Style
@@ -34,6 +35,7 @@ type TimerViewStyle struct {
 	width               int
 	height              int
 	onStop              StopBehavior
+	onTimeout           TimeoutBehavior
 }
 
 type TimerView struct {
@@ -250,6 +252,9 @@ func handleResizeMessage(m TimerView, msg tea.WindowSizeMsg) (tea.Model, tea.Cmd
 }
 
 func handleTimeoutMessage(m TimerView, msg timer.TimeoutMsg) (tea.Model, tea.Cmd) {
+	if m.style.onTimeout != nil {
+		m.style.onTimeout()
+	}
 	return m, focusComplete
 }
 
