@@ -2,7 +2,6 @@ package timerview
 
 import (
 	"fmt"
-	"log"
 	"os/exec"
 	"time"
 
