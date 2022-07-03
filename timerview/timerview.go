@@ -2,6 +2,8 @@ package timerview
 
 import (
 	"fmt"
+	"log"
+	"os/exec"
 	"time"
 
 	"github.com/charmbracelet/bubbles/help"
@@ -20,6 +22,7 @@ const (
 )
 
 type StopBehavior func(TimerView) (tea.Model, tea.Cmd)
+type StartBehavior func()
 type TimeoutBehavior func()
 
 type TimerViewStyle struct {
@@ -35,6 +38,7 @@ type TimerViewStyle struct {
 	width               int
 	height              int
 	onStop              StopBehavior
+	onStart             StartBehavior
 	onTimeout           TimeoutBehavior
 }
 
@@ -205,6 +209,9 @@ func handleEnterPressed(m TimerView) (tea.Model, tea.Cmd) {
 
 func startPauseTimer(m TimerView) (tea.Model, tea.Cmd) {
 	if !m.started {
+		if m.style.onStart != nil {
+			m.style.onStart()
+		}
 		m.started = true
 		m.keymaps[0].SetEnabled(false)
 		m.keymaps[1].SetEnabled(true)
@@ -260,4 +267,9 @@ func handleTimeoutMessage(m TimerView, msg timer.TimeoutMsg) (tea.Model, tea.Cmd
 
 func focusComplete() tea.Msg {
 	return TimerCompleteMsg{}
+}
+
+func runScript(scriptPath string) {
+	cmd := exec.Command(scriptPath)
+	cmd.Output()
 }

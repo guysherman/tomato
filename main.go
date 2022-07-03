@@ -28,6 +28,8 @@ type Tomato struct {
 	shortBreakTime   string
 	longBreakTime    string
 	longBreakTomatos int
+	quietModeScript  string
+	noiseModeScript  string
 }
 
 func (m Tomato) Init() tea.Cmd {
@@ -70,7 +72,7 @@ func handleTimerComplete(m Tomato, msg timerview.TimerCompleteMsg) (tea.Model, t
 
 func (m Tomato) viewForMode() View {
 	if m.mode == focus {
-		return timerview.NewFocusMode(m.focusTime, time.Second, m.currentWidth, m.currentHeight)
+		return timerview.NewFocusMode(m.focusTime, time.Second, m.currentWidth, m.currentHeight, m.noiseModeScript, m.quietModeScript)
 	} else if m.mode == shortBreak {
 		return timerview.NewBreakMode(m.shortBreakTime, time.Second, m.currentWidth, m.currentHeight)
 	} else {
@@ -87,10 +89,12 @@ func main() {
 	var shortBreakTimeFlag = flag.String("s", "5m", "Sets the length of the short break, expressed in <number><unit> eg 5m")
 	var longBreakTimeFlag = flag.String("l", "15m", "Sets the length of the long break, expressed in <number><unit> eg 15m")
 	var longBreakTomatosFlag = flag.Int("L", 4, "Sets the number of tomatos per long break, expressed in <number> eg 4")
+	var quietModeFlag = flag.String("q", "tomato_quiet.sh", "Sets the script to run when focus mode starts")
+	var noiseModeFlag = flag.String("n", "tomato_noise.sh", "Sets the script to run when focus mode ends")
 
 	flag.Parse()
 	m := Tomato{
-		currentView:      timerview.NewFocusMode(*focusTimeFlag, time.Second, 120, 40),
+		currentView:      timerview.NewFocusMode(*focusTimeFlag, time.Second, 120, 40, *noiseModeFlag, *quietModeFlag),
 		mode:             focus,
 		tomatoCount:      0,
 		currentWidth:     120,
@@ -99,6 +103,8 @@ func main() {
 		shortBreakTime:   *shortBreakTimeFlag,
 		longBreakTime:    *longBreakTimeFlag,
 		longBreakTomatos: *longBreakTomatosFlag,
+		quietModeScript:  *quietModeFlag,
+		noiseModeScript:  *noiseModeFlag,
 	}
 
 	if err := tea.NewProgram(m, tea.WithAltScreen()).Start(); err != nil {

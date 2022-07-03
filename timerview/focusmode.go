@@ -9,7 +9,7 @@ import (
 	"github.com/guysherman/tomato/notifications"
 )
 
-func NewFocusMode(duration string, interval time.Duration, width int, height int) TimerView {
+func NewFocusMode(duration string, interval time.Duration, width int, height int, noiseModeScript string, quietModeScript string) TimerView {
 	inactiveButtonStyle := lipgloss.NewStyle().
 		Foreground(lipgloss.Color("8")).
 		Background(lipgloss.Color("7")).
@@ -40,15 +40,20 @@ func NewFocusMode(duration string, interval time.Duration, width int, height int
 		width:               width,
 		height:              height,
 		onStop: func(m TimerView) (tea.Model, tea.Cmd) {
+			runScript(noiseModeScript)
 			return stopTimer(m)
 		},
 		onTimeout: func() {
+			runScript(noiseModeScript)
 			n := notifications.NewNotification(
 				"Tomato Complete!",
 				"Well done! Another tomato down.",
 				notifications.Focus,
 				func(s string) { fmt.Print(s) })
 			n.Send()
+		},
+		onStart: func() {
+			runScript(quietModeScript)
 		},
 	}
 
